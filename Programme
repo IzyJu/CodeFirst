@@ -1,0 +1,83 @@
+using System;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using Microsoft.VisualBasic;
+
+namespace Workshop_EntityFrameworkLinQ_091120
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var context = new CodeFirstContext())
+            {
+                context.Database.EnsureDeleted();
+                context.Database.EnsureCreated();
+
+                var Personne1 = new Personne
+                {
+                    PersonneName = "KOL"
+                };
+
+                Personne1.Comptes = new List<Compte>
+                {
+                    new Compte { Somme = 2000000, TauxEpargne = 0.05, Periode = 12},
+                    new Compte { Somme = 250000, TauxEpargne = 0.15 , Periode = 1},
+                    new Compte { Somme = 10000000, TauxEpargne = 0.02, Periode = 1 }
+                };
+                context.Add(Personne1);
+                context.SaveChanges();
+                SavingCalculator calcul = new SavingCalculator();
+                calcul.CalculateTotalSaved(new DateTime(2018, 10, 1, 8, 30, 52),new DateTime(2020, 10, 1, 8, 30, 52),Personne1.Comptes);
+            }
+        }
+    }
+    class CodeFirstContext : DbContext
+    {
+        public virtual DbSet<Personne> Personne { get; set; }
+        public virtual DbSet<Compte> Compte { get; set; }
+        protected override void OnConfiguring(DbContextOptionsBuilder stringBuilder)
+        {
+            stringBuilder.UseSqlServer(
+                @"Server=LOCALHOST\SQLEXPRESS;Database=Procrastination;Integrated Security = True");
+        }
+    }
+    public class Compte
+    {
+        public Guid CompteId { get; set; }
+        public double TauxEpargne { get; set; }
+        public double Somme { get; set; }
+        public int Periode { get; set; }
+    }
+    public class Personne
+    {
+        public Guid PersonneId { get; set; }
+        public String PersonneName { get; set; }
+        public ICollection<Compte> Comptes { get; set; }
+    }
+    public class SavingCalculator
+    {       
+        public void CalculateTotalSaved(DateTime begin, DateTime end,ICollection<Compte> comptes)
+        {
+            foreach(Compte cmpt in comptes)
+            {            
+                Double total = cmpt.Somme;
+                if (cmpt.Periode == 12)
+                {
+                    var monthNumber = DateAndTime.DateDiff(DateInterval.Month, begin, end);
+                    var temp = (cmpt.Somme * Math.Pow((1 + cmpt.TauxEpargne), monthNumber)) - cmpt.Somme;
+                    total = total + temp;                    
+                    MessageBox.Show("Dans " + monthNumber + " mois le compte numero: " + cmpt.CompteId + " aura pour montant : " + Math.Round(total, 2));
+                }
+                else if (cmpt.Periode == 1)
+                {
+                    var yearsNumber = DateAndTime.DateDiff(DateInterval.Year, begin, end);
+                    var temp = (cmpt.Somme * Math.Pow((1 + cmpt.TauxEpargne), yearsNumber)) - cmpt.Somme;
+                    total = total + temp;
+                    MessageBox.Show("Dans "+yearsNumber+" ans le compte numero: "+cmpt.CompteId +" aura pour montant : " + Math.Round(total, 2));
+                }                
+            }            
+        }
+    }
+}
